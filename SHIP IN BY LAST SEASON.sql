@@ -1,0 +1,27 @@
+﻿USE NIKE
+
+
+DECLARE @LD DATE, @FD DATE
+SET @LD=(SELECT MAX(CREATED_DATE) FROM SALES_DATA)
+SET @FD= DATEADD(YEAR,-1,@LD)
+SELECT A.SHIPMENT, A.UPC, A.QTY,  B.OSD
+FROM
+	(SELECT [SHIPMENT], UPC, SUM([Bill Qty]) QTY
+	FROM 
+		NEW_SHIPMENT SM,
+		MASTER_FILE MF,
+		MASTER_UPC U
+	WHERE
+		LEFT(SM.[Cust PO Nbr],4)=MF.SEASON AND --Lấy mùa cuối cùng theo MF
+		SM.[Prod Cd]=MF.SKU AND 
+		SM.[Prod Cd]=U.SKU AND
+		SM.[Sz Desc]=U.SIZE
+	GROUP BY 
+		[SHIPMENT], UPC) A --Lấy data từ New Shipment
+	INNER JOIN
+	(SELECT SHIPMENT, [Product Code] UPC, MIN([Requested Delivery Date ]) OSD
+	FROM
+		STORE_SHIPIN
+	GROUP BY SHIPMENT, [Product Code]
+	HAVING MIN([Requested Delivery Date ]) BETWEEN @FD AND @LD) B --Lấy data từ Store_shipin
+	ON A.UPC=B.UPC AND A.SHIPMENT=B.SHIPMENT
